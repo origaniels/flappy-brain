@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "backend", "frontend",
+    "neural_network"
+]
