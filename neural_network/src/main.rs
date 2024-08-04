@@ -64,5 +64,5 @@ fn main() {
     }
 
     network.train(100);
-    network.replay();
+    //network.replay();
 }

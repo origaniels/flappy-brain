@@ -1,3 +1,4 @@
+use std::f64::consts::E;
 use std::fs::File;
 use std::{io::{stdout, Result}, time::Instant};
 use ratatui::{
@@ -11,7 +12,7 @@ use nalgebra::SVector;
 
 use crate::layer::{Layer, SIGMOID};
 
-const LEARNING_RATE: f64 = 0.1;
+const LEARNING_RATE: f64 = 0.5;
 
 pub struct Network {
     // input : 
@@ -47,6 +48,8 @@ impl Network {
         _self.layer2.file_to_biases(layer2_bias);
         _self.layer1.file_to_weights(layer1_weights);
         _self.layer2.file_to_weights(layer2_weights);
+        _self.memory1 = _self.layer1.clone();
+        _self.memory2 = _self.layer2.clone();
         _self
     }
 
@@ -56,7 +59,7 @@ impl Network {
     &mut self,
     duration: u32) {
 
-        for i in 1..=duration {
+        for i in 1..=5 {
             let mut game = Game::new();
             let mut score = 0.0;
             let mut out2: SVector<f64, 2> = SVector::<f64, 2>::new(0.0, 0.0);
@@ -68,7 +71,6 @@ impl Network {
                 let input = self.data_to_input(first_pipe, second_pipe, player_height);
                 let out = self.layer1.forward(input.clone());
                 out2 = self.layer2.forward(out);
-                //println!("{}", out2.row(0)[0]);
                 let jump = out2.row(0)[0]>out2.row(1)[0];
                 if jump {
                     game.jump();
@@ -81,7 +83,7 @@ impl Network {
                 let hit_pipe_topline_height: f64 = game.nearest_pipe().3; //y_end_top
                 let hit_pipe_botline_height: f64 = game.nearest_pipe().7; //y_end_bot
                 let window_height: f64 = 200.0;
-                //let goal: SVector<f64, 1> = SVector::<f64, 1>::new(1.0);
+
                 let reward = reward(
                     score,
                     height,
@@ -90,15 +92,12 @@ impl Network {
                     hit_pipe_botline_height,
                     window_height
                 );
-                if i==duration {
-                    println!("reward:{} : {}", reward, out2);
-                }
-                //println!("{}", goal);
+                
                 let first_pipe = game.nearest_pipe();
                 let second_pipe = game.second_nearest_pipe();
                 let player_height = game.player_height();
                 let input = self.data_to_input(first_pipe, second_pipe, player_height);
-
+                
                 let outmem = self.memory1.forward(input.clone());
                 let mut out2mem = self.memory2.forward(outmem);
                 if jump {
@@ -107,9 +106,10 @@ impl Network {
                     out2mem.row_mut(1)[0] += reward;
                 }
                 let expect = out2 + LEARNING_RATE * (out2mem - out2);
-                let error = expect.normalize()-out2;
+                //let expect = SVector::<f64, 2>::new(0.7, 0.3);
+                let error = expect-out2;
+                //println!("reward:{} : {}", reward, out2);
                 let gradient = out2.map(|elem: f64| (SIGMOID.derivative)(&elem));
-                
                 let (err, grad) = self.layer2.back_propag(error, gradient);
                 (_,_) = self.layer1.back_propag(err, grad);
             }
@@ -244,5 +244,5 @@ pub fn reward(
 
     reward += velocity * (window_height/2.0 - height) *  DISTANCE_TO_MIDDLE_IMP;
     reward += velocity * ( (hit_pipe_botline_height + hit_pipe_topline_height)/2.0 - height) * DISTANCE_TO_HOLE_IMP;
-    reward * score
+    1.0/(1.0 + E.powf(-reward))
 }

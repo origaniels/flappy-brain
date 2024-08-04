@@ -112,7 +112,7 @@ impl<const SIZE: usize, const BATCHES: usize> Default for Layer<SIZE, BATCHES> {
     fn default() -> Self {
         let weights: SMatrix<f64, SIZE, BATCHES> = SMatrix::<f64, SIZE, BATCHES>::new_random();
         let biases: SVector<f64, SIZE> = SVector::<f64, SIZE>::zeros();
-        let activation = RELU;
+        let activation = SIGMOID;
         Self::new(weights, biases, activation)
     }
 }
