@@ -79,4 +79,38 @@ impl Game {
             self.game_over = true;
         }
     }
+
+    pub fn nearest_pipe(&self)->(f64, f64, f64, f64, f64, f64, f64, f64) {
+        let player_x = self.player.x_start();
+        for pipe in self.pipes.iter() {
+            if pipe.x_end()>player_x {
+                return pipe.data()
+            }
+        }
+
+        return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    pub fn second_nearest_pipe(&self)->(f64, f64, f64, f64, f64, f64, f64, f64) {
+        let player_x = self.player.x_start();
+        let mut nearest_found = false;
+        for pipe in self.pipes.iter() {
+            if nearest_found {
+                return pipe.data()
+            }
+            if pipe.x_end()>player_x {
+                nearest_found = true;
+            }
+        }
+
+        return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    pub fn player_height(&self)->f64 {
+        self.player.y_end()
+    }
+
+    pub fn player_velocity(&self)->f64 {
+        self.player.velocity()
+    }
 }

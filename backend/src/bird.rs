@@ -45,4 +45,16 @@ impl Bird {
             self.velocity = f64::min(self.velocity + GRAVITY_PULL, BIRD_MAX_VELOCITY);
         }
     }
+
+    pub fn x_start(&self)->f64 {
+        return self.body.x_start();
+    }
+
+    pub fn y_end(&self)->f64 {
+        self.body.y_end()
+    }
+
+    pub fn velocity(&self) -> f64 {
+        self.velocity
+    }
 }

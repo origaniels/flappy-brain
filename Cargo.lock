@@ -267,8 +267,11 @@ dependencies = [
 name = "neural_network"
 version = "0.1.0"
 dependencies = [
+ "backend",
+ "frontend",
  "nalgebra",
  "rand",
+ "ratatui",
  "serde",
  "serde_json",
 ]

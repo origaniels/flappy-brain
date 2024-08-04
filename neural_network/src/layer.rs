@@ -1,4 +1,5 @@
-use std::{default, f64::consts::E, fs::File, io::{IoSlice, IoSliceMut, Read, Write}};
+use core::slice;
+use std::{default, f64::consts::E, fs::File, io::{BufRead, BufReader, BufWriter, IoSlice, IoSliceMut, Read, Write}};
 
 use nalgebra::{DefaultAllocator, Matrix, SMatrix, SVector, VectorN};
 
@@ -10,6 +11,11 @@ pub struct Activation {
 pub const SIGMOID: Activation = Activation {
     function: |x| 1.0 / (1.0 + E.powf(-x)),
     derivative: |x| x * (1.0 - x),
+};
+
+pub const RELU: Activation = Activation {
+    function: |x| if *x<0.0 {0.0} else {*x},
+    derivative: |x| if *x<0.0 {0.0} else {1.0},
 };
 
 pub struct Layer<const SIZE: usize, const BATCHES: usize> {
@@ -45,57 +51,59 @@ impl<const SIZE: usize, const BATCHES: usize> Layer<SIZE, BATCHES> {
         self.weights = self.weights + gradient * transpose;
 
         // update bias
-        self.bias = self.bias + gradient;
+        //self.bias = self.bias + gradient;
 
         let res_error: SVector<f64, BATCHES> = self.weights.transpose() * error;
         let res_gradient: SVector<f64, BATCHES> = self.data.map(|elem| (self.activation.derivative)(&elem));
         (res_error, res_gradient)
     }
 
+    pub fn weights_mut(&mut self) ->&mut SMatrix<f64, SIZE, BATCHES>{
+        &mut self.weights
+    }
+
+    pub fn bias_mut(&mut self) ->&mut SVector<f64, SIZE>{
+        &mut self.bias
+    }
+
     pub fn weights_to_file(&self, mut file: File) {
+        let mut filebytes = BufWriter::with_capacity(8, file);
         for i in 0..SIZE {
             for j in 0..BATCHES {
-                let to_bytes = &self.weights.row(i)[j].to_be_bytes();
-                let slices = [IoSlice::new(to_bytes)];
-                
-                let _ = file.write_vectored(&slices);
+                let bytes = self.weights.row(i)[j].to_be_bytes().to_owned();
+                filebytes.write(&bytes).unwrap();
+                filebytes.flush().unwrap();
             }
         }
     }
 
     pub fn file_to_weights(&mut self, mut file: File) {
+        let mut filebytes = BufReader::with_capacity(8, file);
         for i in 0..SIZE {
             for j in 0..BATCHES {
-                let mut to_bytes:[u8; 8] = Default::default();
-                let mut slices = [IoSliceMut::new(&mut to_bytes)];
-                
-                let _ = file.read_vectored(&mut slices);
-                self.weights.row_mut(i)[j] = f64::from_be_bytes(to_bytes);
+                let to_bytes = filebytes.fill_buf().unwrap();
+                self.weights.row_mut(i)[j] = f64::from_be_bytes(to_bytes.try_into().unwrap());
+                filebytes.consume(8);
             }
         }
     }
 
 
     pub fn biases_to_file(&self, mut file: File) {
+        let mut filebytes = BufWriter::with_capacity(8, file);
         for i in 0..SIZE {
-            for j in 0..BATCHES {
-                let to_bytes = &self.bias.row(i)[j].to_be_bytes();
-                let slices = [IoSlice::new(to_bytes)];
-                
-                let _ = file.write_vectored(&slices);
-            }
+            let bytes = self.weights.row(i)[0].to_be_bytes().to_owned();
+            filebytes.write(&bytes).unwrap();
+            filebytes.flush().unwrap();
         }
     }
 
     pub fn file_to_biases(&mut self, mut file: File) {
+        let mut filebytes = BufReader::with_capacity(8, file);
         for i in 0..SIZE {
-            for j in 0..BATCHES {
-                let mut to_bytes:[u8; 8] = Default::default();
-                let mut slices = [IoSliceMut::new(&mut to_bytes)];
-                
-                let _ = file.read_vectored(&mut slices);
-                self.bias.row_mut(i)[j] = f64::from_be_bytes(to_bytes);
-            }
+            let to_bytes = filebytes.fill_buf().unwrap();
+            self.weights.row_mut(i)[0] = f64::from_be_bytes(to_bytes.try_into().unwrap());
+            filebytes.consume(8);
         }
     }
 }
@@ -103,9 +111,24 @@ impl<const SIZE: usize, const BATCHES: usize> Layer<SIZE, BATCHES> {
 impl<const SIZE: usize, const BATCHES: usize> Default for Layer<SIZE, BATCHES> {
     fn default() -> Self {
         let weights: SMatrix<f64, SIZE, BATCHES> = SMatrix::<f64, SIZE, BATCHES>::new_random();
-        let biases: SVector<f64, SIZE> = SVector::<f64, SIZE>::new_random();
-        let activation = SIGMOID;
+        let biases: SVector<f64, SIZE> = SVector::<f64, SIZE>::zeros();
+        let activation = RELU;
         Self::new(weights, biases, activation)
     }
 }
 
+impl<const SIZE: usize, const BATCHES: usize> Clone for Layer<SIZE, BATCHES> {
+    fn clone(&self) -> Self {
+        Self { weights: self.weights.clone(), bias: self.bias.clone(), activation: self.activation.clone(), data: self.data.clone() }
+    }
+    
+    fn clone_from(&mut self, source: &Self) {
+        *self = source.clone()
+    }
+}
+
+impl Clone for Activation {
+    fn clone(&self) -> Self {
+        Self { function: self.function.clone(), derivative: self.derivative.clone() }
+    }
+}

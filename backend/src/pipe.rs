@@ -52,6 +52,31 @@ impl Pipe {
         self.top_pipe.x_start()
     }
 
+    pub fn x_end(&self)->f64 {
+        self.top_pipe.x_end()
+    }
+
+    pub fn y_start(&self)->f64 {
+        self.top_pipe.y_start()
+    }
+
+    pub fn y_end(&self)->f64 {
+        self.top_pipe.y_end()
+    }
+
+    pub fn data(&self) -> (f64,f64,f64,f64,f64,f64,f64,f64,) {
+        (
+            self.top_pipe.x_start(),
+            self.top_pipe.y_start(),
+            self.top_pipe.x_end(),
+            self.top_pipe.y_end(),
+            self.bottom_pipe.x_start(),
+            self.bottom_pipe.y_start(),
+            self.bottom_pipe.x_end(),
+            self.bottom_pipe.y_end(),
+        )
+    }
+
     pub fn bottom_pipe(&self) -> &Body {
         &self.top_pipe
     }

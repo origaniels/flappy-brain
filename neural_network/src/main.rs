@@ -1,7 +1,7 @@
-use std::vec;
+use std::{fs::File, os::linux::net, vec};
 
 use nalgebra::SVector;
-use neural_network::layer::{Layer, SIGMOID};
+use neural_network::{layer::{Layer, SIGMOID}, network::Network};
 
 fn train(
     layer1: &mut Layer<5, 2>,
@@ -34,24 +34,35 @@ fn print_res(
 }
 
 fn main() {
-    let mut layer1: Layer<5, 2> = Layer::<5, 2>::default();
-    let mut layer2: Layer<1, 5> = Layer::<1, 5>::default();
+    let mut files_found = true;
+    let weights1file = match File::open("data/weights_layer1") {
+        Ok(f)=>f,
+        Err(_)=>{files_found = false; File::create("data/weights_layer1").unwrap()}
+    };
 
-    let inputs: Vec<SVector<f64, 2>> = vec![
-        SVector::<f64, 2>::new(1., 0.),
-        SVector::<f64, 2>::new(1., 1.),
-        SVector::<f64, 2>::new(0., 1.),
-        SVector::<f64, 2>::new(0., 0.),
-    ];
+    let weights2file = match File::open("data/weights_layer2") {
+        Ok(f)=>f,
+        Err(_)=>{files_found = false; File::create("data/weights_layer2").unwrap()}
+    };
 
-    let expect: Vec<SVector<f64, 1>> = vec![
-        SVector::<f64, 1>::new(1.),
-        SVector::<f64, 1>::new(0.),
-        SVector::<f64, 1>::new(1.),
-        SVector::<f64, 1>::new(0.),
-    ];
-    train(&mut layer1, &mut layer2, 10000, &inputs, expect);
-    for input in inputs {
-        print_res(&mut layer1, &mut layer2, input)
+    let bias1file = match File::open("data/bias_layer1") {
+        Ok(f)=>f,
+        Err(_)=>{files_found = false; File::create("data/bias_layer1").unwrap()}
+    };
+
+    let bias2file = match File::open("data/bias_layer2") {
+        Ok(f)=>f,
+        Err(_)=>{files_found = false; File::create("data/bias_layer2").unwrap()}
+    };
+    let mut network = Network::new();
+    if files_found {
+        network = Network::from_file(
+            bias1file,
+            weights1file,
+            bias2file,
+            weights2file);
     }
+
+    network.train(100);
+    network.replay();
 }
